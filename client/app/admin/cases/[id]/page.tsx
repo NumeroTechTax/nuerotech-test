@@ -239,11 +239,11 @@ export default function AdminCaseDetailPage() {
                 <span className="mr-2 text-zinc-500">
                   {e.actorType} {e.actorId ?? ""} – {new Date(e.createdAt).toLocaleString("he-IL")}
                 </span>
-                {e.payloadJson && (
+                {e.payloadJson != null ? (
                   <pre className="mt-1 overflow-auto rounded bg-zinc-100 p-2 text-xs" dir="ltr">
                     {JSON.stringify(e.payloadJson)}
                   </pre>
-                )}
+                ) : null}
               </li>
             ))}
           </ul>

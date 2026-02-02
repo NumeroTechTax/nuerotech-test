@@ -174,11 +174,11 @@ export default function EmployeeCaseDetailPage() {
               {(caseData.events ?? []).map((e) => (
                 <li key={e.id} className="rounded border border-zinc-100 p-2 text-sm">
                   <span className="font-medium">{e.action}</span> – {e.actorType} {e.actorId ?? ""} – {new Date(e.createdAt).toLocaleString("he-IL")}
-                  {e.payloadJson && (
+                  {e.payloadJson != null ? (
                     <pre className="mt-1 overflow-auto rounded bg-zinc-100 p-1 text-xs" dir="ltr">
                       {JSON.stringify(e.payloadJson)}
                     </pre>
-                  )}
+                  ) : null}
                 </li>
               ))}
               {(caseData.events ?? []).length === 0 && <p className="text-zinc-500">אין אירועים.</p>}
