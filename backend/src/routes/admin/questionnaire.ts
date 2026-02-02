@@ -1,4 +1,5 @@
 import { Router, Request, Response } from "express";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../../db";
 import { requireAuth } from "../../middleware/auth";
 import { requireAdmin } from "../../middleware/requireRole";
@@ -81,7 +82,7 @@ router.post("/versions/:id/clone", async (req: Request, res: Response) => {
     if (q.displayRules.length) {
       for (const r of q.displayRules) {
         await prisma.displayRule.create({
-          data: { questionId: newQ.id, expressionJson: r.expressionJson },
+          data: { questionId: newQ.id, expressionJson: r.expressionJson as Prisma.InputJsonValue },
         });
       }
     }
@@ -183,7 +184,7 @@ router.post("/questions/:qid/rules", async (req: Request, res: Response) => {
     return;
   }
   const rule = await prisma.displayRule.create({
-    data: { questionId: qid, expressionJson },
+    data: { questionId: qid, expressionJson: expressionJson as Prisma.InputJsonValue },
   });
   res.status(201).json(rule);
 });
