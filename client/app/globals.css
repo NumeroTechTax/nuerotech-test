@@ -2,9 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Minimal reset (Preflight is disabled so form text can be black) */
+*,
+::before,
+::after {
+  box-sizing: border-box;
+}
+* {
+  margin: 0;
+  padding: 0;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
+}
+
+/* Prefer light so form controls don't get browser dark-mode styling */
+html {
+  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -18,4 +34,60 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Force form controls and buttons to black text (override inherit / preflight / dark mode) */
+button,
+input,
+optgroup,
+select,
+textarea {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+input::placeholder,
+textarea::placeholder {
+  color: #000000 !important;
+}
+/* Override browser autofill so typed text stays black */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: #000000 !important;
+  color: #000000 !important;
+}
+
+/* Higher specificity so it wins over Tailwind and browser */
+html body button,
+html body input,
+html body optgroup,
+html body select,
+html body textarea {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+
+/* Google login button: force "התחברו עם גוגל" and icon to black */
+.btn-google-login,
+.btn-google-login *,
+html body .btn-google-login,
+html body .btn-google-login * {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+
+/* Login email: force black text + Chrome autofill override (box-shadow clears Chrome’s overlay) */
+#email,
+#email:-webkit-autofill,
+#email:-webkit-autofill:hover,
+#email:-webkit-autofill:focus,
+#email:-webkit-autofill:active,
+input#email,
+input#email:-webkit-autofill {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  box-shadow: 0 0 0 1000px #ffffff inset !important;
+  transition: background-color 5000s ease-in-out 0s, color 0s !important;
 }

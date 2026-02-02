@@ -1,0 +1,47 @@
+/* Loaded last so it wins over Tailwind Preflight and globals.css.
+   Forces form controls to black text in Chrome and all browsers. */
+
+button,
+input,
+optgroup,
+select,
+textarea {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+
+html body button,
+html body input,
+html body optgroup,
+html body select,
+html body textarea {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #000000 !important;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+
+#email,
+input#email,
+#email:-webkit-autofill,
+input#email:-webkit-autofill {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+
+.btn-google-login,
+.btn-google-login * {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}

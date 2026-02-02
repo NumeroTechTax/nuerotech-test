@@ -26,6 +26,42 @@ function LoginForm() {
     if (err) setError(err === "google_not_configured" ? "Google sign-in not configured" : "Sign-in failed");
   }, [searchParams, router]);
 
+  /* Inject style tag so black text overrides hashed chunk - runs when login page mounts */
+  useEffect(() => {
+    const id = "login-form-black-text";
+    const run = () => {
+      if (typeof document === "undefined") return;
+      if (document.getElementById(id)) return;
+      const style = document.createElement("style");
+      style.id = id;
+      style.setAttribute("data-login-override", "true");
+      style.textContent = [
+        "button,input,optgroup,select,textarea{color:#000!important;-webkit-text-fill-color:#000!important}",
+        "input::placeholder,textarea::placeholder{color:#000!important}",
+        "#email,input#email,.login-email-input,#email:-webkit-autofill,input#email:-webkit-autofill{color:#000!important;-webkit-text-fill-color:#000!important}",
+        ".btn-google-login,.btn-google-login *{color:#000!important;-webkit-text-fill-color:#000!important}",
+      ].join("");
+      (document.head || document.documentElement).appendChild(style);
+    };
+    run();
+    const t = setTimeout(run, 100);
+    return () => clearTimeout(t);
+  }, []);
+
+  /* Force email/code input text black via JS so it wins over Chrome/Preflight */
+  useEffect(() => {
+    const forceBlack = (el: HTMLElement | null) => {
+      if (!el) return;
+      el.style.setProperty("color", "#000000", "important");
+      el.style.setProperty("-webkit-text-fill-color", "#000000", "important");
+    };
+    const t = setTimeout(() => {
+      forceBlack(document.getElementById("email"));
+      forceBlack(document.getElementById("code"));
+    }, 0);
+    return () => clearTimeout(t);
+  }, [step]);
+
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -98,8 +134,17 @@ function LoginForm() {
           <LoginIllustration />
         </div>
 
-        {/* Form */}
-        <div className="w-full max-w-md">
+        {/* Form - color-scheme: light so input text is not forced to light by OS dark mode */}
+        <div className="w-full max-w-md" style={{ colorScheme: "light" }}>
+          {/* Chrome: force email input text black (in-page style wins over external CSS) */}
+          <style dangerouslySetInnerHTML={{ __html: `
+            .login-email-input, #email, input#email,
+            .login-email-input:-webkit-autofill, #email:-webkit-autofill,
+            #email:-webkit-autofill:hover, #email:-webkit-autofill:focus, #email:-webkit-autofill:active {
+              color: #000000 !important;
+              -webkit-text-fill-color: #000000 !important;
+            }
+          ` }} />
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             יאללה, נתחיל?
           </h1>
@@ -127,8 +172,14 @@ function LoginForm() {
                   placeholder="your@email.com"
                   required
                   disabled={loading}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-teal outline-none transition disabled:opacity-60"
+                  className="login-email-input w-full px-4 py-3 border border-gray-300 rounded-lg placeholder:text-black focus:ring-2 focus:ring-teal focus:border-teal outline-none transition disabled:opacity-60"
+                  style={{
+                    color: "#000000",
+                    WebkitTextFillColor: "#000000",
+                    caretColor: "#000000",
+                  }}
                   dir="ltr"
+                  autoComplete="email"
                 />
               </div>
               <button
@@ -158,7 +209,8 @@ function LoginForm() {
                   placeholder="000000"
                   required
                   disabled={loading}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-teal outline-none transition text-center text-lg tracking-widest disabled:opacity-60"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg placeholder:text-black focus:ring-2 focus:ring-teal focus:border-teal outline-none transition text-center text-lg tracking-widest disabled:opacity-60"
+                  style={{ color: "#000", WebkitTextFillColor: "#000" }}
                   dir="ltr"
                 />
               </div>
@@ -182,7 +234,8 @@ function LoginForm() {
           <button
             type="button"
             onClick={handleGoogleLogin}
-            className="mt-6 w-full py-3 px-4 border border-gray-300 bg-white hover:bg-gray-50 font-medium rounded-lg flex items-center justify-center gap-3 transition"
+            className="btn-google-login mt-6 w-full py-3 px-4 border border-gray-300 bg-white hover:bg-gray-50 font-medium rounded-lg flex items-center justify-center gap-3 transition"
+            style={{ color: "#000000", WebkitTextFillColor: "#000000" }}
           >
             <GoogleIcon className="w-5 h-5" />
             <span>התחברו עם גוגל</span>
