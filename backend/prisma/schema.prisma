@@ -1,0 +1,156 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  googleId  String?  @map("google_id")
+  status    String   @default("active")
+  role      String   @default("user")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  cases Case[]
+}
+
+model Case {
+  id                      String   @id @default(cuid())
+  userId                  String   @map("user_id")
+  taxYear                 Int      @map("tax_year")
+  questionnaireVersionId  String   @map("questionnaire_version_id")
+  workflowStep            String   @map("workflow_step")
+  status                  String
+  assignedTo              String?  @map("assigned_to")
+  price                   Decimal? @db.Decimal(10, 2)
+  paymentStatus           String   @default("pending") @map("payment_status")
+  isMarried               Boolean? @map("is_married")
+  spouseCasePart          Json?    @map("spouse_case_part")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+  finishedAt              DateTime? @map("finished_at")
+
+  user               User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questionnaireVersion QuestionnaireVersion @relation(fields: [questionnaireVersionId], references: [id])
+  answers            Answer[]
+  requirements       Requirement[]
+  uploads            Upload[]
+  signatures         Signature[]
+  events             Event[]
+}
+
+model QuestionnaireVersion {
+  id        String   @id @default(cuid())
+  taxYear   Int      @map("tax_year")
+  version   Int      @default(1)
+  state     String
+  createdBy String?  @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  cases     Case[]
+  questions Question[]
+}
+
+model Question {
+  id        String   @id @default(cuid())
+  versionId String   @map("version_id")
+  key       String
+  text      String
+  type      String
+  order     Int      @default(0)
+  pageGroup String?  @map("page_group")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  version      QuestionnaireVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  options      Option[]
+  displayRules DisplayRule[]
+}
+
+model Option {
+  id         String   @id @default(cuid())
+  questionId String   @map("question_id")
+  value      String
+  label      String
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+model DisplayRule {
+  id            String   @id @default(cuid())
+  questionId   String   @map("question_id")
+  expressionJson Json   @map("expression_json")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+model Answer {
+  id         String   @id @default(cuid())
+  caseId     String   @map("case_id")
+  questionKey String  @map("question_key")
+  valueJson   Json    @map("value_json")
+  answeredAt DateTime @default(now()) @map("answered_at")
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model Requirement {
+  id                String   @id @default(cuid())
+  caseId            String   @map("case_id")
+  type              String
+  key               String
+  title             String?
+  instructions      String?
+  required          Boolean  @default(true)
+  ruleExpressionJson Json?   @map("rule_expression_json")
+  status            String   @default("missing")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  case    Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  uploads Upload[]
+}
+
+model Upload {
+  id             String   @id @default(cuid())
+  caseId         String   @map("case_id")
+  requirementId  String   @map("requirement_id")
+  filePath       String   @map("file_path")
+  fileType       String?  @map("file_type")
+  checksum       String?
+  uploadedAt     DateTime @default(now()) @map("uploaded_at")
+  verifiedStatus String?  @map("verified_status")
+  verifiedBy     String?  @map("verified_by")
+
+  case        Case        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  requirement Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+}
+
+model Signature {
+  id           String   @id @default(cuid())
+  caseId       String   @map("case_id")
+  signer       String
+  signedPdfPath String? @map("signed_pdf_path")
+  signedAt     DateTime? @map("signed_at")
+  auditJson    Json?    @map("audit_json")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model Event {
+  id         String   @id @default(cuid())
+  actorType String   @map("actor_type")
+  actorId    String?  @map("actor_id")
+  caseId     String?  @map("case_id")
+  action     String
+  payloadJson Json?   @map("payload_json")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  case Case? @relation(fields: [caseId], references: [id], onDelete: SetNull)
+}

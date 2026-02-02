@@ -1,17 +1,80 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { apiPath } from "@/lib/config";
+
+import { AUTH_TOKEN_KEY, setToken } from "@/lib/auth";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
+  const [step, setStep] = useState<"email" | "code">("email");
+  const [code, setCode] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSendCode = (e: React.FormEvent) => {
+  useEffect(() => {
+    const token = searchParams.get("token");
+    if (token) {
+      setToken(token);
+      router.replace("/dashboard");
+      return;
+    }
+    const err = searchParams.get("error");
+    if (err) setError(err === "google_not_configured" ? "Google sign-in not configured" : "Sign-in failed");
+  }, [searchParams, router]);
+
+  const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: integrate with backend OTP
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch(apiPath("/auth/otp/send"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? "Failed to send code");
+        return;
+      }
+      setStep("code");
+    } catch {
+      setError("Network error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch(apiPath("/auth/otp/verify"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? "Invalid or expired code");
+        return;
+      }
+      setToken(data.token);
+      router.push("/dashboard");
+    } catch {
+      setError("Network error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogleLogin = () => {
-    // TODO: integrate with Google OAuth
+    window.location.href = apiPath("/auth/google");
   };
 
   return (
@@ -44,30 +107,77 @@ export default function LoginPage() {
             רק מקלידים את המייל ומקבלים מיד קוד חד פעמי להתחברות
           </p>
 
-          <form onSubmit={handleSendCode} className="space-y-6">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                מייל
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-teal outline-none transition"
-                dir="ltr"
-              />
-            </div>
+          {error && (
+            <p className="mb-4 text-sm text-red-600" role="alert">
+              {error}
+            </p>
+          )}
 
-            <button
-              type="submit"
-              className="w-full py-3 px-4 bg-teal-dark hover:bg-teal text-white font-medium rounded-lg transition"
-            >
-              שלחו לי קוד
-            </button>
-          </form>
+          {step === "email" ? (
+            <form onSubmit={handleSendCode} className="space-y-6">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                  מייל
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  required
+                  disabled={loading}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-teal outline-none transition disabled:opacity-60"
+                  dir="ltr"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 px-4 bg-teal-dark hover:bg-teal text-white font-medium rounded-lg transition disabled:opacity-60"
+              >
+                {loading ? "שולח..." : "שלחו לי קוד"}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyCode} className="space-y-6">
+              <p className="text-sm text-gray-600">
+                הקוד נשלח ל־{email}
+              </p>
+              <div>
+                <label htmlFor="code" className="block text-sm font-medium text-gray-700 mb-2">
+                  קוד
+                </label>
+                <input
+                  id="code"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                  placeholder="000000"
+                  required
+                  disabled={loading}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-teal outline-none transition text-center text-lg tracking-widest disabled:opacity-60"
+                  dir="ltr"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loading || code.length < 6}
+                className="w-full py-3 px-4 bg-teal-dark hover:bg-teal text-white font-medium rounded-lg transition disabled:opacity-60"
+              >
+                {loading ? "בודק..." : "אישור"}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setStep("email"); setCode(""); setError(null); }}
+                className="w-full py-2 text-sm text-gray-600 hover:text-gray-900"
+              >
+                חזרה למייל
+              </button>
+            </form>
+          )}
 
           <button
             type="button"
