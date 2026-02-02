@@ -13,7 +13,7 @@ router.use(requireAuth);
 router.use(requireAdmin);
 
 /** GET /admin/questionnaire/versions – list questionnaire versions */
-router.get("/versions", async (req: AuthRequest, res: Response) => {
+router.get("/versions", async (req: Request, res: Response) => {
   const versions = await prisma.questionnaireVersion.findMany({
     orderBy: [{ taxYear: "desc" }, { version: "desc" }],
     include: { _count: { select: { questions: true } } },
@@ -22,7 +22,7 @@ router.get("/versions", async (req: AuthRequest, res: Response) => {
 });
 
 /** POST /admin/questionnaire/versions – create draft version */
-router.post("/versions", async (req: AuthRequest, res: Response) => {
+router.post("/versions", async (req: Request, res: Response) => {
   const taxYear = parseInt(req.body?.taxYear, 10);
   if (!Number.isInteger(taxYear)) {
     res.status(400).json({ error: "taxYear required" });
@@ -37,14 +37,14 @@ router.post("/versions", async (req: AuthRequest, res: Response) => {
       taxYear,
       version: (last?.version ?? 0) + 1,
       state: QUESTIONNAIRE_VERSION_STATES[0],
-      createdBy: req.user.userId,
+      createdBy: (req as AuthRequest).user.userId,
     },
   });
   res.status(201).json(version);
 });
 
 /** POST /admin/questionnaire/versions/:id/clone – clone from previous year */
-router.post("/versions/:id/clone", async (req: AuthRequest, res: Response) => {
+router.post("/versions/:id/clone", async (req: Request, res: Response) => {
   const id = req.params.id;
   const source = await prisma.questionnaireVersion.findUnique({
     where: { id },
@@ -59,7 +59,7 @@ router.post("/versions/:id/clone", async (req: AuthRequest, res: Response) => {
       taxYear: source.taxYear + 1,
       version: 1,
       state: QUESTIONNAIRE_VERSION_STATES[0],
-      createdBy: req.user.userId,
+      createdBy: (req as AuthRequest).user.userId,
     },
   });
   for (const q of source.questions) {
@@ -90,7 +90,7 @@ router.post("/versions/:id/clone", async (req: AuthRequest, res: Response) => {
 });
 
 /** PATCH /admin/questionnaire/versions/:id/publish */
-router.patch("/versions/:id/publish", async (req: AuthRequest, res: Response) => {
+router.patch("/versions/:id/publish", async (req: Request, res: Response) => {
   const version = await prisma.questionnaireVersion.update({
     where: { id: req.params.id },
     data: { state: QUESTIONNAIRE_VERSION_STATES[1] },
@@ -99,7 +99,7 @@ router.patch("/versions/:id/publish", async (req: AuthRequest, res: Response) =>
 });
 
 /** GET /admin/questionnaire/versions/:id/questions */
-router.get("/versions/:id/questions", async (req: AuthRequest, res: Response) => {
+router.get("/versions/:id/questions", async (req: Request, res: Response) => {
   const questions = await prisma.question.findMany({
     where: { versionId: req.params.id },
     include: { options: true, displayRules: true },
@@ -109,7 +109,7 @@ router.get("/versions/:id/questions", async (req: AuthRequest, res: Response) =>
 });
 
 /** POST /admin/questionnaire/versions/:id/questions */
-router.post("/versions/:id/questions", async (req: AuthRequest, res: Response) => {
+router.post("/versions/:id/questions", async (req: Request, res: Response) => {
   const versionId = req.params.id;
   const { key, text, type, order, options } = req.body ?? {};
   if (!key || !text || !type) {
@@ -133,7 +133,7 @@ router.post("/versions/:id/questions", async (req: AuthRequest, res: Response) =
 });
 
 /** PATCH /admin/questionnaire/questions/:qid */
-router.patch("/questions/:qid", async (req: AuthRequest, res: Response) => {
+router.patch("/questions/:qid", async (req: Request, res: Response) => {
   const { key, text, type, order } = req.body ?? {};
   const question = await prisma.question.update({
     where: { id: req.params.qid },
@@ -144,13 +144,13 @@ router.patch("/questions/:qid", async (req: AuthRequest, res: Response) => {
 });
 
 /** DELETE /admin/questionnaire/questions/:qid */
-router.delete("/questions/:qid", async (req: AuthRequest, res: Response) => {
+router.delete("/questions/:qid", async (req: Request, res: Response) => {
   await prisma.question.delete({ where: { id: req.params.qid } });
   res.status(204).send();
 });
 
 /** PUT /admin/questionnaire/questions/:qid/options – replace options */
-router.put("/questions/:qid/options", async (req: AuthRequest, res: Response) => {
+router.put("/questions/:qid/options", async (req: Request, res: Response) => {
   const qid = req.params.qid;
   const options = req.body?.options;
   if (!Array.isArray(options)) {
@@ -175,7 +175,7 @@ router.put("/questions/:qid/options", async (req: AuthRequest, res: Response) =>
 });
 
 /** POST /admin/questionnaire/questions/:qid/rules – add display rule */
-router.post("/questions/:qid/rules", async (req: AuthRequest, res: Response) => {
+router.post("/questions/:qid/rules", async (req: Request, res: Response) => {
   const qid = req.params.qid;
   const expressionJson = req.body?.expressionJson;
   if (!expressionJson || typeof expressionJson !== "object") {
@@ -189,13 +189,13 @@ router.post("/questions/:qid/rules", async (req: AuthRequest, res: Response) => 
 });
 
 /** DELETE /admin/questionnaire/rules/:ruleId */
-router.delete("/rules/:ruleId", async (req: AuthRequest, res: Response) => {
+router.delete("/rules/:ruleId", async (req: Request, res: Response) => {
   await prisma.displayRule.delete({ where: { id: req.params.ruleId } });
   res.status(204).send();
 });
 
 /** POST /admin/questionnaire/versions/:id/preview – next question given simulated answers */
-router.post("/versions/:id/preview", async (req: AuthRequest, res: Response) => {
+router.post("/versions/:id/preview", async (req: Request, res: Response) => {
   const versionId = req.params.id;
   const answers = req.body?.answers ?? {};
   const version = await prisma.questionnaireVersion.findUnique({

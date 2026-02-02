@@ -31,8 +31,9 @@ router.use(requireAuth);
 type AuthRequest = Request & { user: { userId: string; email: string; role: string } };
 
 /** GET /cases – list current user's cases */
-router.get("/", async (req: AuthRequest, res: Response) => {
-  const userId = req.user.userId;
+router.get("/", async (req: Request, res: Response) => {
+  const r = req as AuthRequest;
+  const userId = r.user.userId;
   const taxYear = req.query.taxYear ? parseInt(String(req.query.taxYear), 10) : undefined;
   const cases = await prisma.case.findMany({
     where: { userId, ...(taxYear ? { taxYear } : {}) },
@@ -45,8 +46,9 @@ router.get("/", async (req: AuthRequest, res: Response) => {
 });
 
 /** POST /cases – create new case for a tax year */
-router.post("/", async (req: AuthRequest, res: Response) => {
-  const userId = req.user.userId;
+router.post("/", async (req: Request, res: Response) => {
+  const r = req as AuthRequest;
+  const userId = r.user.userId;
   const taxYear = parseInt(req.body?.taxYear, 10);
   if (!Number.isInteger(taxYear) || taxYear < 2000 || taxYear > 2100) {
     res.status(400).json({ error: "valid taxYear required" });
@@ -84,8 +86,9 @@ router.post("/", async (req: AuthRequest, res: Response) => {
 });
 
 /** GET /cases/:id – get one case (must belong to user) */
-router.get("/:id", async (req: AuthRequest, res: Response) => {
-  const userId = req.user.userId;
+router.get("/:id", async (req: Request, res: Response) => {
+  const r = req as AuthRequest;
+  const userId = r.user.userId;
   const id = req.params.id;
   const caseRecord = await prisma.case.findFirst({
     where: { id, userId },
@@ -101,8 +104,9 @@ router.get("/:id", async (req: AuthRequest, res: Response) => {
 });
 
 /** POST /cases/:id/payment/complete – mark paid and advance to PersonalDetailsUploads (MVP stub) */
-router.post("/:id/payment/complete", async (req: AuthRequest, res: Response) => {
-  const userId = req.user.userId;
+router.post("/:id/payment/complete", async (req: Request, res: Response) => {
+  const r = req as AuthRequest;
+  const userId = r.user.userId;
   const caseId = req.params.id;
   const amount = req.body?.amount != null ? Number(req.body.amount) : 0;
   const caseRecord = await prisma.case.findFirst({
@@ -134,8 +138,9 @@ router.post("/:id/payment/complete", async (req: AuthRequest, res: Response) => 
 });
 
 /** GET /cases/:id/requirements – list requirements; ensure default docs for PersonalDetailsUploads */
-router.get("/:id/requirements", async (req: AuthRequest, res: Response) => {
-  const userId = req.user.userId;
+router.get("/:id/requirements", async (req: Request, res: Response) => {
+  const r = req as AuthRequest;
+  const userId = r.user.userId;
   const caseId = req.params.id;
   const caseRecord = await prisma.case.findFirst({
     where: { id: caseId, userId },
@@ -146,7 +151,8 @@ router.get("/:id/requirements", async (req: AuthRequest, res: Response) => {
     return;
   }
   const step = caseRecord.workflowStep;
-  const needPersonalDocs = [WORKFLOW_STEPS[4], WORKFLOW_STEPS[5], WORKFLOW_STEPS[6], WORKFLOW_STEPS[7], WORKFLOW_STEPS[8], WORKFLOW_STEPS[9], WORKFLOW_STEPS[10]].includes(step);
+  const stepIdx = WORKFLOW_STEPS.indexOf(step as (typeof WORKFLOW_STEPS)[number]);
+  const needPersonalDocs = stepIdx >= 4 && stepIdx <= 10;
   if (needPersonalDocs && caseRecord.requirements.length === 0) {
     await prisma.requirement.createMany({
       data: [
@@ -164,8 +170,9 @@ router.get("/:id/requirements", async (req: AuthRequest, res: Response) => {
 });
 
 /** POST /cases/:id/requirements/:reqId/upload – upload file (base64 in body for MVP) */
-router.post("/:id/requirements/:reqId/upload", async (req: AuthRequest, res: Response) => {
-  const userId = req.user.userId;
+router.post("/:id/requirements/:reqId/upload", async (req: Request, res: Response) => {
+  const r = req as AuthRequest;
+  const userId = r.user.userId;
   const caseId = req.params.id;
   const reqId = req.params.reqId;
   const { base64, fileName } = req.body ?? {};
@@ -213,8 +220,9 @@ router.post("/:id/requirements/:reqId/upload", async (req: AuthRequest, res: Res
 });
 
 /** GET /cases/:id/uploads/:uploadId/download – stream file (auth required) */
-router.get("/:id/uploads/:uploadId/download", async (req: AuthRequest, res: Response) => {
-  const userId = req.user.userId;
+router.get("/:id/uploads/:uploadId/download", async (req: Request, res: Response) => {
+  const r = req as AuthRequest;
+  const userId = r.user.userId;
   const caseId = req.params.id;
   const uploadId = req.params.uploadId;
   const caseRecord = await prisma.case.findFirst({
@@ -240,8 +248,9 @@ router.get("/:id/uploads/:uploadId/download", async (req: AuthRequest, res: Resp
 });
 
 /** POST /cases/:id/signatures – submit POA signature (base64 PDF) */
-router.post("/:id/signatures", async (req: AuthRequest, res: Response) => {
-  const userId = req.user.userId;
+router.post("/:id/signatures", async (req: Request, res: Response) => {
+  const r = req as AuthRequest;
+  const userId = r.user.userId;
   const caseId = req.params.id;
   const { signer, base64Pdf } = req.body ?? {};
   if (!signer || typeof signer !== "string") {
@@ -287,8 +296,9 @@ router.post("/:id/signatures", async (req: AuthRequest, res: Response) => {
 });
 
 /** GET /cases/:id/spouse – get spouse data */
-router.get("/:id/spouse", async (req: AuthRequest, res: Response) => {
-  const userId = req.user.userId;
+router.get("/:id/spouse", async (req: Request, res: Response) => {
+  const r = req as AuthRequest;
+  const userId = r.user.userId;
   const caseId = req.params.id;
   const caseRecord = await prisma.case.findFirst({
     where: { id: caseId, userId },
@@ -302,8 +312,9 @@ router.get("/:id/spouse", async (req: AuthRequest, res: Response) => {
 });
 
 /** PATCH /cases/:id/spouse – update spouse data */
-router.patch("/:id/spouse", async (req: AuthRequest, res: Response) => {
-  const userId = req.user.userId;
+router.patch("/:id/spouse", async (req: Request, res: Response) => {
+  const r = req as AuthRequest;
+  const userId = r.user.userId;
   const caseId = req.params.id;
   const spouse = req.body?.spouse;
   const caseRecord = await prisma.case.findFirst({
@@ -325,8 +336,9 @@ router.patch("/:id/spouse", async (req: AuthRequest, res: Response) => {
 });
 
 /** POST /cases/:id/advance-step – move to next workflow step (user confirmed step done) */
-router.post("/:id/advance-step", async (req: AuthRequest, res: Response) => {
-  const userId = req.user.userId;
+router.post("/:id/advance-step", async (req: Request, res: Response) => {
+  const r = req as AuthRequest;
+  const userId = r.user.userId;
   const caseId = req.params.id;
   const caseRecord = await prisma.case.findFirst({
     where: { id: caseId, userId },
@@ -365,8 +377,9 @@ router.post("/:id/advance-step", async (req: AuthRequest, res: Response) => {
 });
 
 /** POST /cases/:id/finish – set workflow to SubmittedToStaff */
-router.post("/:id/finish", async (req: AuthRequest, res: Response) => {
-  const userId = req.user.userId;
+router.post("/:id/finish", async (req: Request, res: Response) => {
+  const r = req as AuthRequest;
+  const userId = r.user.userId;
   const caseId = req.params.id;
   const caseRecord = await prisma.case.findFirst({
     where: { id: caseId, userId },
@@ -393,8 +406,9 @@ router.post("/:id/finish", async (req: AuthRequest, res: Response) => {
 });
 
 /** GET /cases/:id/questionnaire/next */
-router.get("/:id/questionnaire/next", async (req: AuthRequest, res: Response) => {
-  const userId = req.user.userId;
+router.get("/:id/questionnaire/next", async (req: Request, res: Response) => {
+  const r = req as AuthRequest;
+  const userId = r.user.userId;
   const caseId = req.params.id;
   const caseRecord = await getCaseWithQuestionnaire(caseId, userId);
   if (!caseRecord) {
@@ -424,8 +438,9 @@ router.get("/:id/questionnaire/next", async (req: AuthRequest, res: Response) =>
 });
 
 /** POST /cases/:id/questionnaire/answer */
-router.post("/:id/questionnaire/answer", async (req: AuthRequest, res: Response) => {
-  const userId = req.user.userId;
+router.post("/:id/questionnaire/answer", async (req: Request, res: Response) => {
+  const r = req as AuthRequest;
+  const userId = r.user.userId;
   const caseId = req.params.id;
   const { questionKey, value } = req.body ?? {};
   if (!questionKey || value === undefined) {

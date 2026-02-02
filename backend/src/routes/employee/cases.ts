@@ -12,7 +12,7 @@ router.use(requireAuth);
 router.use(requireEmployeeOrAdmin);
 
 /** GET /employee/cases – list cases with filters (for Kanban) */
-router.get("/", async (req: AuthRequest, res: Response) => {
+router.get("/", async (req: Request, res: Response) => {
   const taxYear = req.query.taxYear ? parseInt(String(req.query.taxYear), 10) : undefined;
   const status = typeof req.query.status === "string" ? req.query.status : undefined;
   const assignedTo = typeof req.query.assignedTo === "string" ? req.query.assignedTo : undefined;
@@ -32,7 +32,7 @@ router.get("/", async (req: AuthRequest, res: Response) => {
 });
 
 /** GET /employee/cases/:id – full case detail for employee (answers, requirements, uploads, signatures, events) */
-router.get("/:id", async (req: AuthRequest, res: Response) => {
+router.get("/:id", async (req: Request, res: Response) => {
   const id = req.params.id;
   const caseRecord = await prisma.case.findUnique({
     where: { id },
@@ -56,9 +56,9 @@ router.get("/:id", async (req: AuthRequest, res: Response) => {
 });
 
 /** PATCH /employee/cases/:id – update status, assignedTo */
-router.patch("/:id", async (req: AuthRequest, res: Response) => {
+router.patch("/:id", async (req: Request, res: Response) => {
   const id = req.params.id;
-  const userId = req.user.userId;
+  const userId = (req as AuthRequest).user.userId;
   const { status, assignedTo } = req.body ?? {};
   const caseRecord = await prisma.case.findUnique({
     where: { id },
@@ -68,7 +68,7 @@ router.patch("/:id", async (req: AuthRequest, res: Response) => {
     return;
   }
   const data: { status?: string; assignedTo?: string | null } = {};
-  if (status !== undefined && CASE_STATUSES.includes(status)) data.status = status;
+  if (status !== undefined && (CASE_STATUSES as readonly string[]).includes(status)) data.status = status;
   if (assignedTo !== undefined) data.assignedTo = assignedTo === "" ? null : assignedTo;
   if (Object.keys(data).length === 0) {
     res.status(400).json({ error: "nothing_to_update" });
@@ -80,7 +80,7 @@ router.patch("/:id", async (req: AuthRequest, res: Response) => {
   });
   await prisma.event.create({
     data: {
-      actorType: req.user.role,
+      actorType: (req as AuthRequest).user.role,
       actorId: userId,
       caseId: id,
       action: "case_update",

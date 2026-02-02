@@ -30,7 +30,7 @@ function logEvent(
 }
 
 /** GET /admin/cases – list all cases (admin) with optional filters */
-router.get("/", async (req: AuthRequest, res: Response) => {
+router.get("/", async (req: Request, res: Response) => {
   const taxYear = req.query.taxYear ? parseInt(String(req.query.taxYear), 10) : undefined;
   const status = typeof req.query.status === "string" ? req.query.status : undefined;
   const assignedTo = typeof req.query.assignedTo === "string" ? req.query.assignedTo : undefined;
@@ -50,7 +50,7 @@ router.get("/", async (req: AuthRequest, res: Response) => {
 });
 
 /** GET /admin/cases/:id – get one case (admin) with full details */
-router.get("/:id", async (req: AuthRequest, res: Response) => {
+router.get("/:id", async (req: Request, res: Response) => {
   const id = req.params.id;
   const caseRecord = await prisma.case.findUnique({
     where: { id },
@@ -70,7 +70,7 @@ router.get("/:id", async (req: AuthRequest, res: Response) => {
 });
 
 /** GET /admin/cases/:id/events – audit log for case */
-router.get("/:id/events", async (req: AuthRequest, res: Response) => {
+router.get("/:id/events", async (req: Request, res: Response) => {
   const caseId = req.params.id;
   const caseRecord = await prisma.case.findUnique({
     where: { id: caseId },
@@ -88,9 +88,9 @@ router.get("/:id/events", async (req: AuthRequest, res: Response) => {
 });
 
 /** PATCH /admin/cases/:id – update workflow_step, status, price (with audit) */
-router.patch("/:id", async (req: AuthRequest, res: Response) => {
+router.patch("/:id", async (req: Request, res: Response) => {
   const caseId = req.params.id;
-  const userId = req.user.userId;
+  const userId = (req as AuthRequest).user.userId;
   const { workflowStep, status, price } = req.body ?? {};
   const caseRecord = await prisma.case.findUnique({
     where: { id: caseId },
@@ -101,12 +101,12 @@ router.patch("/:id", async (req: AuthRequest, res: Response) => {
   }
   const payload: { workflowStep?: string; status?: string; price?: number; previous?: unknown } = {};
   const data: { workflowStep?: string; status?: string; price?: { set: number } } = {};
-  if (workflowStep !== undefined && WORKFLOW_STEPS.includes(workflowStep)) {
+  if (workflowStep !== undefined && (WORKFLOW_STEPS as readonly string[]).includes(workflowStep)) {
     payload.workflowStep = workflowStep;
     payload.previous = { workflowStep: caseRecord.workflowStep };
     data.workflowStep = workflowStep;
   }
-  if (status !== undefined && CASE_STATUSES.includes(status)) {
+  if (status !== undefined && (CASE_STATUSES as readonly string[]).includes(status)) {
     payload.status = status;
     (payload.previous as Record<string, unknown> ?? {})["status"] = caseRecord.status;
     data.status = status;
@@ -135,9 +135,9 @@ router.patch("/:id", async (req: AuthRequest, res: Response) => {
 });
 
 /** POST /admin/cases/:id/reset – reset questionnaire / documents / all (with audit) */
-router.post("/:id/reset", async (req: AuthRequest, res: Response) => {
+router.post("/:id/reset", async (req: Request, res: Response) => {
   const caseId = req.params.id;
-  const userId = req.user.userId;
+  const userId = (req as AuthRequest).user.userId;
   const scope = req.body?.scope ?? "all";
   if (!["questionnaire", "documents", "all"].includes(scope)) {
     res.status(400).json({ error: "invalid_scope", allowed: ["questionnaire", "documents", "all"] });
